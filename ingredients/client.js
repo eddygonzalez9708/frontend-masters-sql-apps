@@ -54,9 +54,15 @@ function populateResult(elId, results, templateFn) {
 const prev = document.getElementById("prev-button");
 const next = document.getElementById("next-button");
 function togglePaginationButtons(page, count) {
+  console.log(page, count)
   if (page === 0) {
     prev.setAttribute("disabled", "");
-    next.removeAttribute("disabled");
+
+    if ((page + 1) * 5 >= +count) {
+      next.setAttribute("disabled", "");
+    } else {
+      next.removeAttribute("disabled");
+    }
   } else if ((page + 1) * 5 >= +count) {
     prev.removeAttribute("disabled");
     next.setAttribute("disabled", "");
@@ -79,7 +85,7 @@ async function init() {
   populateResult("swiper-other", other, templateRow);
   const searchResults = await requestFromAPI();
   populateResult("search-results", searchResults, templateResult);
-  togglePaginationButtons(page, searchResults[0].total_count);
+  togglePaginationButtons(page, searchResults.length ? searchResults[0].total_count : 0);
 
   const formElem = document.getElementById("search");
   formElem.addEventListener("submit", async (e) => {
@@ -89,7 +95,7 @@ async function init() {
     page = 0;
     const searchResults = await requestFromAPI(void 0, formData.get("term"));
     populateResult("search-results", searchResults, templateResult);
-    togglePaginationButtons(page, searchResults[0].total_count);
+    togglePaginationButtons(page, searchResults.length ? searchResults[0].total_count : 0);
   });
 
   document
@@ -107,7 +113,7 @@ async function init() {
       searchResults = await requestFromAPI(void 0, term, page);
 
       populateResult("search-results", searchResults, templateResult);
-      togglePaginationButtons(page, searchResults[0].total_count);
+      togglePaginationButtons(page, searchResults.length ? searchResults[0].total_count : 0);
     });
 
   new Swiper(".swiper", {
