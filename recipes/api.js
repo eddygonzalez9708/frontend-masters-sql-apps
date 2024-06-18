@@ -23,6 +23,15 @@ router.get("/detail", (_, res) =>
 
 // connect to postgres
 
+const pg = require("pg");
+const pool = new pg.Pool({
+  user: "postgres",
+  host: "localhost",
+  database: "recipeguru",
+  password: "lol",
+  port: 5432
+})
+
 router.get("/search", async function (req, res) {
   console.log("search recipes");
 
@@ -30,7 +39,17 @@ router.get("/search", async function (req, res) {
   //
   // for recipes without photos, return url as default.jpg
 
-  res.status(501).json({ status: "not implemented", rows: [] });
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (r.recipe_id) 
+      r.recipe_id as recipe_id, r.title AS title, COALESCE(rp.url, 'default.jpg') AS url 
+      FROM recipes_photos rp
+      RIGHT JOIN recipes r
+      ON r.recipe_id = rp.recipe_id`)
+      res.json({ rows })
+  } catch {
+    res.status(501).json({ status: "not implemented", rows: [] });
+  }
 });
 
 router.get("/get", async (req, res) => {
@@ -51,7 +70,34 @@ router.get("/get", async (req, res) => {
   // return the body as body
   // if no row[0] has no photo, return it as default.jpg
 
-  res.status(501).json({ status: "not implemented" });
+  try {
+    const { rows: ingredients } = await pool.query(
+      `SELECT i.image AS ingredient_image, i.type AS ingredient_type, i.title AS ingredient_title 
+      FROM ingredients i
+      INNER JOIN recipe_ingredients rp
+      ON i.id = rp.ingredient_id
+      WHERE recipe_id = $1;`,
+      [recipeId]
+    )
+
+    const { rows: photos } = await pool.query(
+      `SELECT r.title as title, r.body as body, COALESCE(rp.url, 'default.jpg') as url
+      FROM recipes_photos rp 
+      RIGHT JOIN recipes r
+      ON r.recipe_id = rp.recipe_id 
+      WHERE r.recipe_id = $1`,
+      [recipeId]
+    )
+
+    res.json({
+      title: photos[0].title,
+      body: photos[0].body,
+      ingredients,
+      photos: photos.map((photo) => photo.url)
+    })
+  } catch {
+    res.status(501).json({ status: "not implemented" });
+  }
 });
 /**
  * Student code ends here
